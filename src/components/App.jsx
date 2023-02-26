@@ -1,24 +1,35 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { ContactForm } from './ContactForm/ContactForm.jsx';
 import { ContactList } from './ContactList/ContactList.jsx';
 import { Filter } from './Filter/Filter.jsx';
+import { store } from '../redux/store';
+import { useSelector, useDispatch } from 'react-redux';
+import { addContact, deleteContact} from '../redux/contacts/contacts-actions';
+import { setFilter } from '../redux/filter/filter-actions';
+import { getAllContacts, getFilteredContacts} from '../redux/contacts/contacts-selectors';
+import { getFilter } from '../redux/filter/filter-selectors';
 
 export const App = () => {
-  const [contacts, setContacts] = useState(() => {
-    const contacts = JSON.parse(localStorage.getItem('my-contacts'));
-    return contacts?.length ? contacts : []; // cheking if contacs.length > 0 return contacts, else return [] empty array
-  });
-  const [filter, setFilter] = useState('');
+  const filteredContacts = useSelector(getFilteredContacts);
+  const allContacts = useSelector(getAllContacts);
+  const filter = useSelector(getFilter);
+  // const [contacts, setContacts] = useState(() => {
+  //   const contacts = JSON.parse(localStorage.getItem('my-contacts'));
+  //   return contacts?.length ? contacts : []; // cheking if contacs.length > 0 return contacts, else return [] empty array
+  // });
+  // const [filter, setFilter] = useState('');
+
+  const dispatch = useDispatch();
 
   useEffect(() => {
-    localStorage.setItem('my-contacts', JSON.stringify(contacts));
-  }, [contacts]);
+    localStorage.setItem('my-contacts', JSON.stringify(allContacts));
+  }, [allContacts]);
 
   const isDublicate = (name, number) => {
     const normalizedName = name.toLowerCase();
     const normalizedNumber = number.toLowerCase();
-    const result = contacts.find(({ name, number }) => {
+    const result = allContacts.find(({ name, number }) => {
       return (
         name.toLowerCase() === normalizedName ||
         number.toLowerCase() === normalizedNumber
@@ -27,47 +38,32 @@ export const App = () => {
     return Boolean(result);
   };
 
-  const addContact = ({ name, number }) => {
+  const handleAddContact = ({ name, number }) => {
     if (isDublicate(name, number)) {
       // cheking for dublicate in state list
       return alert(
         `Name: "${name}" or number: "${number}" is already in contacts, please check the contacts list`
       );
     }
-    setContacts(prevContacts => {
-      const newContact = {
-        id: nanoid(),
-        name,
-        number,
-      };
-      return [newContact, ...prevContacts];
-    });
+    dispatch(addContact({ name, number }));
+
+    // setContacts(prevContacts => {
+    //   const newContact = {
+    //     id: nanoid(),
+    //     name,
+    //     number,
+    //   };
+    //   return [newContact, ...prevContacts];
+    // });
   };
 
-  const deleteContact = id => {
-    setContacts(prevContacts =>
-      prevContacts.filter(contact => contact.id !== id)
-    );
+  const handleDeleteContact = id => {
+    dispatch(deleteContact(id));
   };
 
-  const handleFilter = ({ target }) => setFilter(target.value);
+  const handleFilter = ({ target }) => {dispatch(setFilter(target.value))};
 
-  const getFilteredContacts = () => {
-    if (!filter) {
-      // cheking if filter input is empty (false) then do nothing
-      return contacts;
-    }
-    const normalizedFilter = filter.toLowerCase();
-    const result = contacts.filter(({ name, number }) => {
-      return (
-        name.toLowerCase().includes(normalizedFilter) ||
-        number.toLowerCase().includes(normalizedFilter)
-      );
-    });
-    return result;
-  };
 
-  const filteredContacts = getFilteredContacts();
 
   return (
     <div
@@ -85,19 +81,17 @@ export const App = () => {
       }}
     >
       <h1>Phonebook</h1>
-      <ContactForm onSubmit={addContact} />
-
+      <ContactForm onSubmit={handleAddContact} />
       <h2>Contacts</h2>
-      <Filter handleChange={handleFilter} />
+      <Filter value={filter} handleChange={handleFilter} />
       <>
-        {contacts.length !== 0 && (
+        {filteredContacts.length !== 0 && (
           <ContactList
             contacts={filteredContacts}
-            deleteContact={deleteContact}
+            deleteContact={handleDeleteContact}
           />
         )}
-
-        {contacts.length === 0 && (
+        {filteredContacts.length === 0 && (
           <p
             style={{
               marginTop: '40px',
